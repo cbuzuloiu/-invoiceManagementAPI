@@ -234,6 +234,85 @@ app.get("/allclients", async (req, res) => {
   }
 });
 
+// Define a POST route at /addcleint — this route handles adding a new issuer to the database
+app.post("/addcleint", async (req, res) => {
+  // 1️⃣ Destructure properties from the request body
+  // The client sends JSON data (via Postman or a frontend form),
+  // and express.json() parses it into req.body.
+  // Here, we extract each property into its own variable for convenience.
+  const {
+    name,
+    cui,
+    nr_reg_com,
+    address,
+    bank_name,
+    bank_account,
+    phone,
+    email,
+    website,
+  } = req.body;
+
+  // 2️⃣ Basic validation
+  // We check that mandatory fields (name and CUI) are provided.
+  // If not, we return a 400 Bad Request response and stop execution.
+  if (!name || !cui) {
+    return res.status(400).json({ error: "Name and CUI are required." });
+  }
+
+  try {
+    // 3️⃣ Define the SQL query for inserting a new issuer
+    // This uses parameterized placeholders ($1, $2, etc.) to prevent SQL injection.
+    const query = `
+      INSERT INTO clients 
+        (name, cui, nr_reg_com, address, bank_name, bank_account, phone, email, website)
+      VALUES 
+        ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *;
+    `;
+
+    // 4️⃣ Prepare the array of actual values to substitute into the placeholders.
+    // The order of items here matches the order of columns in the SQL query above.
+    // Using "|| null" ensures missing fields are stored as NULL in the database.
+    const values = [
+      name,
+      cui,
+      nr_reg_com || null,
+      address || null,
+      bank_name || null,
+      bank_account || null,
+      phone || null,
+      email || null,
+      website || null,
+    ];
+
+    // 5️⃣ Execute the query against the PostgreSQL database
+    // pool.query() sends the SQL command with the provided values.
+    // "await" pauses execution until the database responds.
+    const result = await pool.query(query, values);
+
+    // 6️⃣ On success, send a 201 Created response
+    // We return a success message and the data of the newly inserted issuer (from result.rows[0]).
+    res.status(201).json({
+      message: "Client added successfully!",
+      client: result.rows[0],
+    });
+  } catch (err) {
+    // 7️⃣ Handle any errors that occur during the process
+    console.error("Error inserting client:", err);
+
+    // 8️⃣ Check if the error code is PostgreSQL’s "23505" — unique constraint violation
+    // This happens if an issuer with the same name or CUI already exists.
+    if (err.code === "23505") {
+      res
+        .status(409)
+        .json({ error: "Client with this name or CUI already exists." });
+    } else {
+      // 9️⃣ For all other database-related errors, return a generic 500 Internal Server Error
+      res.status(500).json({ error: "Database error while adding issuer." });
+    }
+  }
+});
+
 app.listen(port, () => {
   console.log(`Successfully started server on port ${port}.`);
 });
