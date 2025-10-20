@@ -344,6 +344,73 @@ app.delete("/deleteclient/:id", async (req, res) => {
   }
 });
 
+app.put("/editclient/:id", async (req, res) => {
+  const { id } = req.params;
+  const {
+    name,
+    cui,
+    nr_reg_com,
+    address,
+    bank_name,
+    bank_account,
+    phone,
+    email,
+    website,
+  } = req.body;
+
+  try {
+    // 1️⃣ Check if the issuer exists
+    const checkResult = await pool.query(
+      "SELECT * FROM clients WHERE id = $1",
+      [id]
+    );
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: "Client not found." });
+    }
+
+    // 2️⃣ Update the issuer in the database
+    const query = `
+      UPDATE clients
+      SET 
+        name = COALESCE($1, name),
+        cui = COALESCE($2, cui),
+        nr_reg_com = COALESCE($3, nr_reg_com),
+        address = COALESCE($4, address),
+        bank_name = COALESCE($5, bank_name),
+        bank_account = COALESCE($6, bank_account),
+        phone = COALESCE($7, phone),
+        email = COALESCE($8, email),
+        website = COALESCE($9, website)
+      WHERE id = $10
+      RETURNING *;
+    `;
+
+    const values = [
+      name || null,
+      cui || null,
+      nr_reg_com || null,
+      address || null,
+      bank_name || null,
+      bank_account || null,
+      phone || null,
+      email || null,
+      website || null,
+      id,
+    ];
+
+    const result = await pool.query(query, values);
+
+    // 3️⃣ Respond with the updated issuer
+    res.status(200).json({
+      message: "Client updated successfully!",
+      updatedClient: result.rows[0],
+    });
+  } catch (err) {
+    console.error("Error updating client:", err);
+    res.status(500).json({ error: "Database error while updating issuer." });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Successfully started server on port ${port}.`);
 });
