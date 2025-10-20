@@ -313,6 +313,37 @@ app.post("/addcleint", async (req, res) => {
   }
 });
 
+// 🗑️ DELETE route — Delete a specific issuer by ID
+app.delete("/deleteclient/:id", async (req, res) => {
+  const { id } = req.params; // Extract the "id" parameter from the request URL
+
+  try {
+    // Check if issuer with the given ID exists
+    const checkResult = await pool.query(
+      "SELECT * FROM clients WHERE id = $1",
+      [id]
+    );
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: "Issuer not found." });
+    }
+
+    // Delete the issuer from the database
+    const deleteResult = await pool.query(
+      "DELETE FROM clients WHERE id = $1 RETURNING *",
+      [id]
+    );
+
+    // Respond with the deleted issuer data
+    res.status(200).json({
+      message: "Client deleted successfully.",
+      deletedClient: deleteResult.rows[0],
+    });
+  } catch (err) {
+    console.error("Error deleting Client:", err);
+    res.status(500).json({ error: "Database error while deleting Client." });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Successfully started server on port ${port}.`);
 });
