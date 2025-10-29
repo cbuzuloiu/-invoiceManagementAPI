@@ -434,7 +434,9 @@ app.get("/allissuerinvoices/:id", async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Issuer not found." });
+      return res
+        .status(404)
+        .json({ error: "No invoices found for this issuer." });
     }
 
     res.status(200).json(result.rows);
