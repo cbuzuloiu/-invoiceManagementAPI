@@ -411,6 +411,17 @@ app.put("/editclient/:id", async (req, res) => {
   }
 });
 
+// INVOICES ROUTES
+app.get("/allinvoices", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM invoices");
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Query error", err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Successfully started server on port ${port}.`);
 });
