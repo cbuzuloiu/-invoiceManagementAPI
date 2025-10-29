@@ -422,6 +422,28 @@ app.get("/allinvoices", async (req, res) => {
   }
 });
 
+// Get all invoices issued by a specific issuer
+app.get("/allissuerinvoices/:id", async (req, res) => {
+  const { id } = req.params; // Extract the "id" parameter from the request URL
+
+  try {
+    // Check if the issuer with the given ID exists
+    const result = await pool.query(
+      "SELECT * FROM invoices WHERE id_issuer = $1",
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Issuer not found." });
+    }
+
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error("Query error", err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Successfully started server on port ${port}.`);
 });
