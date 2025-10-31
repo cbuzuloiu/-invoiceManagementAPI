@@ -3,6 +3,7 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import pg from "pg";
 import pkg from "pg";
+import { validateRequiredFields } from "./helperFunctions.js";
 const { Pool } = pkg;
 
 const pool = new Pool({
@@ -446,12 +447,30 @@ app.get("/allissuerinvoices/:id", async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Successfully started server on port ${port}.`);
-});
-
 // Add a new invoice
 app.post("/addinvoice", async (req, res) => {
+  const required = [
+    "id_invoice",
+    "id_issuer",
+    "id_client",
+    "issued_date",
+    "due_date",
+    "lead_time",
+    "status",
+    "total_without_vat",
+    "total_vat",
+    "grand_total",
+  ];
+
+  //Check if all the fields are provided
+  const { isValid, missing } = validateRequiredFields(req.body, required);
+
+  if (!isValid) {
+    return res
+      .status(400)
+      .json({ error: `Missing required fields: ${missing.join(", ")}` });
+  }
+
   // Destructure properties form the request body
   const {
     id_invoice,
@@ -465,24 +484,6 @@ app.post("/addinvoice", async (req, res) => {
     total_vat,
     grand_total,
   } = req.body;
-
-  //Check if all the fields are provided
-  if (
-    !id_invoice ||
-    !id_issuer ||
-    !id_client ||
-    !issued_date ||
-    !due_date ||
-    !lead_time ||
-    !status ||
-    !total_without_vat ||
-    !total_vat ||
-    !grand_total
-  ) {
-    return res
-      .status(400)
-      .json({ error: "All the invoice fields are required" });
-  }
 
   try {
     // SQL query for inserting a new invoice
@@ -528,4 +529,8 @@ app.post("/addinvoice", async (req, res) => {
       res.status(500).json({ error: "Database error while adding invoice." });
     }
   }
+});
+
+app.listen(port, () => {
+  console.log(`Successfully started server on port ${port}.`);
 });
