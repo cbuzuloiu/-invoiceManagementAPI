@@ -449,3 +449,83 @@ app.get("/allissuerinvoices/:id", async (req, res) => {
 app.listen(port, () => {
   console.log(`Successfully started server on port ${port}.`);
 });
+
+// Add a new invoice
+app.post("/addinvoice", async (req, res) => {
+  // Destructure properties form the request body
+  const {
+    id_invoice,
+    id_issuer,
+    id_client,
+    issued_date,
+    due_date,
+    lead_time,
+    status,
+    total_without_vat,
+    total_vat,
+    grand_total,
+  } = req.body;
+
+  //Check if all the fields are provided
+  if (
+    !id_invoice ||
+    !id_issuer ||
+    !id_client ||
+    !issued_date ||
+    !due_date ||
+    !lead_time ||
+    !status ||
+    !total_without_vat ||
+    !total_vat ||
+    !grand_total
+  ) {
+    return res
+      .status(400)
+      .json({ error: "All the invoice fields are required" });
+  }
+
+  try {
+    // SQL query for inserting a new invoice
+    const query = `
+      INSERT INTO INVOICES
+        (id_invoice, id_issuer, id_client, issued_date, due_date, lead_time, status, total_without_vat,   total_vat, grand_total)
+      VALUES
+        ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING *;
+    `;
+
+    // Prepare the array of actual values to substitute into the placeholders
+    const values = [
+      id_invoice,
+      id_issuer,
+      id_client,
+      issued_date,
+      due_date,
+      lead_time,
+      status,
+      total_without_vat,
+      total_vat,
+      grand_total,
+    ];
+
+    // Execute the query against the PostgreSQL database
+    const result = await pool.query(query, values);
+
+    res.status(201).json({
+      message: "Invoice added successfully!",
+      invoice: result.rows[0],
+    });
+  } catch (err) {
+    // Handle any errors that occur during the process
+    console.error("Error inserting invoice:", err);
+
+    // Check if the error code is PostgreSQL’s "23505" — unique constraint violation
+    // This happens if an invoice with the same id already exists.
+    if (err.code === "23505") {
+      res.status(409).json({ error: "Invoice with this ID already exists." });
+    } else {
+      // For all other database-related errors, return a generic 500 Internal Server Error
+      res.status(500).json({ error: "Database error while adding invoice." });
+    }
+  }
+});
